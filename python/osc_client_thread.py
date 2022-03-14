@@ -5,7 +5,7 @@ from collections import defaultdict
 from pythonosc.udp_client import SimpleUDPClient
 
 
-class osc_messenger_thread(threading.Thread):
+class osc_client_thread(threading.Thread):
 
     def __init__(self, weights_dict, send_rate, ip, port):
         threading.Thread.__init__(self)
@@ -25,8 +25,11 @@ class osc_messenger_thread(threading.Thread):
     def set_message(self, osc_path, value):
         self.target_value_dict[osc_path] = value
 
+    def set_weights(self, weights_dict):
+        self.weights_dict = weights_dict
+
     def run(self):
-        print('Running OSC Messenger')
+        print('Running OSC Client')
 
         while not self.exit_flag:
             # calculate rolling averages
@@ -44,5 +47,10 @@ class osc_messenger_thread(threading.Thread):
 
             time.sleep(self.send_rate)
 
-    def __del__(self):
+        print('Stopping OSC Client')
+
+    def stop(self):
         self.exit_flag = True
+
+    def __del__(self):
+        self.stop()
