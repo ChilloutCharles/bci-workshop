@@ -23,7 +23,7 @@ Avatar parameters being sent are floats that range from -1.0 to 1.0. Negative an
 - `/avatar/parameters/osc_focus_right`
 
 Adjusting sensitivity per OSC path can be done by having float parameters in your avatar that are prefixes of the paramater name + '_tune'.
-This will allow you to adjust sensitivity on the fly from your radial menu.
+This will allow you to adjust how reactive the metrics are on the fly from your radial menu.
 For example, having a parameters named `osc_relax_tune` will adjust the sensitivity for the paramaters:
 
 - `/avatar/parameters/osc_relax_left`
