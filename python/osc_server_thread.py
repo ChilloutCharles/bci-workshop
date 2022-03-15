@@ -1,8 +1,12 @@
 import threading
 import math
+import pickle
+import os.path
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
+
+SAVE_PATH = 'saved_weights.pkl'
 
 
 def weight_handler(tune_addr, args, value):
@@ -24,9 +28,13 @@ class osc_server_thread(threading.Thread):
         threading.Thread.__init__(self)
 
         self.weights_dict = weights_dict
+        if os.path.isfile(SAVE_PATH):
+            print('Loading tune settings')
+            with open(SAVE_PATH, 'rb') as f:
+                self.weights_dict = pickle.load(f)
 
         dispatcher = Dispatcher()
-        dispatcher.map("/avatar/parameters/osc_*_tune", weight_handler, self)
+        dispatcher.map("/avatar/parameters/osc*_tune", weight_handler, self)
         self.osc_server = BlockingOSCUDPServer((ip, port), dispatcher)
 
     def get_weights(self):
@@ -38,6 +46,11 @@ class osc_server_thread(threading.Thread):
     def run(self):
         print('Running OSC Server')
         self.osc_server.serve_forever()
+
+        print('Saving tune settings')
+        with open(SAVE_PATH, 'wb') as f:
+            pickle.dump(self.weights_dict, f)
+
         print('Stopping OSC Server')
 
     def stop(self):
