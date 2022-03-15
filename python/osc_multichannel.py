@@ -17,8 +17,10 @@ from pylsl import StreamInlet, resolve_byprop  # Module to receive EEG data
 
 import bci_workshop_tools as BCIw  # Our own functions for the workshop
 
-# My own thread class for sending OSC Messages
-from osc_messenger_thread import osc_messenger_thread
+# My own thread classes for sending and recieving OSC Messages
+from osc_client_thread import osc_client_thread
+from osc_server_thread import osc_server_thread
+
 
 """ Constants to make my life easier """
 
@@ -82,11 +84,14 @@ def tanh_normalize(data, scale, offset):
 
 if __name__ == "__main__":
 
-    # OSC messenger thread
+    # OSC threads
     ip = "127.0.0.1"
-    port = 9000
+    send_port = 9000
+    recv_port = 9001
     send_rate = 0.016
-    osc_thread = osc_messenger_thread(rolling_Avg_Weights, send_rate, ip, port)
+    osc_client = osc_client_thread(
+        rolling_Avg_Weights, send_rate, ip, send_port)
+    osc_server = osc_server_thread(rolling_Avg_Weights, ip, recv_port)
 
     """ 1. CONNECT TO EEG STREAM """
 
@@ -167,8 +172,9 @@ if __name__ == "__main__":
     print('Press Ctrl-C in the console to break the while loop.')
 
     try:
-        # start OSC messenger loop
-        osc_thread.start()
+        # start OSC loops
+        osc_server.start()
+        osc_client.start()
 
         # The following loop does what we see in the diagram of Exercise 1:
         # acquire data, compute features, visualize raw EEG and the features
@@ -230,14 +236,17 @@ if __name__ == "__main__":
             focus_left = np.average(focus_left)
             focus_right = np.average(focus_right)
 
-            """ Send results to OSC messenger loop """
-            osc_thread.set_message(OSC_Path.Relax, relax_left)
-            osc_thread.set_message(OSC_Path.RelaxLeft, relax_left)
-            osc_thread.set_message(OSC_Path.RelaxRight, relax_right)
+            """ Send results to OSC client loop """
+            weights = osc_server.get_weights()
+            osc_client.set_weights(weights)
 
-            osc_thread.set_message(OSC_Path.Focus, focus_left)
-            osc_thread.set_message(OSC_Path.FocusLeft, focus_left)
-            osc_thread.set_message(OSC_Path.FocusRight, focus_right)
+            osc_client.set_message(OSC_Path.Relax, relax_left)
+            osc_client.set_message(OSC_Path.RelaxLeft, relax_left)
+            osc_client.set_message(OSC_Path.RelaxRight, relax_right)
+
+            osc_client.set_message(OSC_Path.Focus, focus_left)
+            osc_client.set_message(OSC_Path.FocusLeft, focus_left)
+            osc_client.set_message(OSC_Path.FocusRight, focus_right)
 
             """ 3.3 VISUALIZE THE RAW EEG AND THE FEATURES """
             if ENABLE_PLOTTER:
@@ -248,5 +257,8 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print('Closing!')
     finally:
-        osc_thread.exit_flag = True
-        osc_thread.join()
+        osc_client.stop()
+        osc_server.stop()
+
+        osc_client.join()
+        osc_server.join()
