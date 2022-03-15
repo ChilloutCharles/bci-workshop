@@ -88,10 +88,12 @@ if __name__ == "__main__":
     ip = "127.0.0.1"
     send_port = 9000
     recv_port = 9001
+    fwd_port = 9002
     send_rate = 0.016
     osc_client = osc_client_thread(
         rolling_Avg_Weights, send_rate, ip, send_port)
-    osc_server = osc_server_thread(rolling_Avg_Weights, ip, recv_port)
+    osc_server = osc_server_thread(
+        rolling_Avg_Weights, ip, recv_port, fwd_port)
 
     """ 1. CONNECT TO EEG STREAM """
 

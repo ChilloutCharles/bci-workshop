@@ -5,6 +5,7 @@ import os.path
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
+from pythonosc.udp_client import SimpleUDPClient
 
 SAVE_PATH = 'saved_weights.pkl'
 
@@ -23,8 +24,14 @@ def weight_handler(tune_addr, args, value):
     serv_thread.set_weights(weight_dict)
 
 
+def forward_handler(serv_thread):
+    def innerFunction(addr, message):
+        serv_thread.osc_client.send_message(addr, message)
+    return innerFunction
+
+
 class osc_server_thread(threading.Thread):
-    def __init__(self, weights_dict, ip, port):
+    def __init__(self, weights_dict, ip, recv_port, fwd_port):
         threading.Thread.__init__(self)
 
         self.weights_dict = weights_dict
@@ -33,9 +40,14 @@ class osc_server_thread(threading.Thread):
             with open(SAVE_PATH, 'rb') as f:
                 self.weights_dict = pickle.load(f)
 
+        # osc_server
         dispatcher = Dispatcher()
         dispatcher.map("/avatar/parameters/osc*_tune", weight_handler, self)
-        self.osc_server = BlockingOSCUDPServer((ip, port), dispatcher)
+        dispatcher.set_default_handler(forward_handler(self))
+        self.osc_server = BlockingOSCUDPServer((ip, recv_port), dispatcher)
+
+        # osc_forward
+        self.osc_client = SimpleUDPClient(ip, fwd_port)
 
     def get_weights(self):
         return self.weights_dict
